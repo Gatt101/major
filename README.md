@@ -53,7 +53,6 @@ A Flask-based web application that uses a trained YOLO model to classify brain s
 ## 📁 Project Structure
 
 ```
-CarryBag/
 ├── main.py              # Flask application
 ├── pyproject.toml       # Project dependencies
 ├── models/
