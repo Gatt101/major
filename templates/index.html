@@ -13,7 +13,9 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: radial-gradient(1200px 600px at 0% 0%, rgba(255,255,255,0.15), transparent 50%),
+                        radial-gradient(1000px 500px at 100% 100%, rgba(255,255,255,0.12), transparent 50%),
+                        linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -23,7 +25,7 @@
             margin: 0 auto;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.12);
             overflow: hidden;
         }
 
@@ -38,6 +40,8 @@
             font-size: 2.5rem;
             margin-bottom: 10px;
             font-weight: 300;
+            letter-spacing: 0.3px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.25);
         }
 
         .header p {
@@ -65,6 +69,7 @@
         .upload-section:hover {
             border-color: #667eea;
             background: #f0f4ff;
+            box-shadow: 0 14px 30px rgba(102,126,234,0.18);
         }
 
         .upload-section.dragover {
@@ -105,6 +110,11 @@
             box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
+        .file-input-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.35);
+        }
+
         .upload-icon {
             font-size: 4rem;
             color: #667eea;
@@ -137,8 +147,14 @@
             border-radius: 10px;
             padding: 20px;
             margin: 15px 0;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
             border-left: 5px solid #667eea;
+            transition: transform 0.2s ease, box-shadow 0.25s ease;
+        }
+
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.12);
         }
 
         .result-card.very-mild { border-left-color: #28a745; }
@@ -151,6 +167,10 @@
             font-weight: 600;
             color: #2c3e50;
             margin-bottom: 10px;
+            display: inline-block;
+            padding: 6px 12px;
+            background: #eef2ff;
+            border-radius: 10px;
         }
 
         .confidence-bar {
@@ -165,7 +185,7 @@
             height: 100%;
             background: linear-gradient(90deg, #667eea, #764ba2);
             border-radius: 10px;
-            transition: width 0.8s ease;
+            transition: width 0.8s cubic-bezier(.2,.8,.2,1);
         }
 
         .confidence-text {
@@ -177,16 +197,17 @@
         .all-predictions {
             margin-top: 20px;
             padding: 15px;
-            background: #f1f3f4;
+            background: #f6f8ff;
             border-radius: 10px;
+            border: 1px solid #e7ecff;
         }
 
         .prediction-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #dee2e6;
+            padding: 10px 2px;
+            border-bottom: 1px dashed #dfe6ff;
         }
 
         .prediction-item:last-child {
@@ -424,42 +445,42 @@
         function displayResults(predictions) {
             resultsContainer.innerHTML = '';
             
-            predictions.forEach((prediction, index) => {
-                const resultCard = document.createElement('div');
-                resultCard.className = `result-card ${getClassSlug(prediction.class_name)}`;
-                
-                let confidencePercentage = (prediction.confidence * 100).toFixed(1);
-                
-                resultCard.innerHTML = `
-                    <div class="result-title">${prediction.class_name}</div>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" style="width: ${confidencePercentage}%"></div>
-                    </div>
-                    <div class="confidence-text">Confidence: ${confidencePercentage}%</div>
-                `;
+            // Choose the highest-confidence prediction to headline the result
+            const bestPrediction = predictions.reduce((max, p) => p.confidence > max.confidence ? p : max, predictions[0]);
+            // Trust backend-provided label directly to avoid index mismatches
+            const displayClassName = bestPrediction.class_name;
+            const confidencePercentage = (bestPrediction.confidence * 100).toFixed(1);
 
-                // Add all predictions breakdown if available
-                if (prediction.all_confidences) {
-                    const allPredictionsDiv = document.createElement('div');
-                    allPredictionsDiv.className = 'all-predictions';
-                    allPredictionsDiv.innerHTML = '<h4>All Class Predictions:</h4>';
-                    
-                    Object.entries(prediction.all_confidences).forEach(([className, confidence]) => {
-                        const predictionItem = document.createElement('div');
-                        predictionItem.className = 'prediction-item';
-                        predictionItem.innerHTML = `
-                            <span>${className}</span>
-                            <span>${(confidence * 100).toFixed(1)}%</span>
-                        `;
-                        allPredictionsDiv.appendChild(predictionItem);
-                    });
-                    
-                    resultCard.appendChild(allPredictionsDiv);
-                }
+            const mainResultCard = document.createElement('div');
+            mainResultCard.className = `result-card ${getClassSlug(displayClassName)}`;
+            mainResultCard.innerHTML = `
+        <div class="result-title">${displayClassName}</div>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" style="width: ${confidencePercentage}%"></div>
+                </div>
+                <div class="confidence-text">Confidence: ${confidencePercentage}%</div>
+            `;
 
-                resultsContainer.appendChild(resultCard);
-            });
-            
+            // Show all class confidences using backend-provided labels (already human-readable)
+            if (bestPrediction.all_confidences) {
+                const allPredictionsDiv = document.createElement('div');
+                allPredictionsDiv.className = 'all-predictions';
+                allPredictionsDiv.innerHTML = '<h4>All Class Predictions:</h4>';
+
+                Object.entries(bestPrediction.all_confidences).forEach(([className, confidence]) => {
+                    const predictionItem = document.createElement('div');
+                    predictionItem.className = 'prediction-item';
+                    predictionItem.innerHTML = `
+                        <span>${className}</span>
+                        <span>${(confidence * 100).toFixed(1)}%</span>
+                    `;
+                    allPredictionsDiv.appendChild(predictionItem);
+                });
+
+                mainResultCard.appendChild(allPredictionsDiv);
+            }
+
+            resultsContainer.appendChild(mainResultCard);
             resultsSection.style.display = 'block';
         }
 

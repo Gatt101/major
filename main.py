@@ -14,13 +14,37 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 model_path = os.path.join('models', 'best.pt')
 model = YOLO(model_path)
 
-# Alzheimer's classification classes (adjust these based on your model)
-ALZHEIMER_CLASSES = {
-    0: 'Very Mild Demented',
-    1: 'Non Demented', 
-    2: 'Moderate Demented',
-    3: 'Mild Demented'
-}
+def _format_class_name(raw_name: str) -> str:
+    """Make raw model class names human readable.
+
+    Examples:
+    - "VeryMildDemented" -> "Very Mild Demented"
+    - "NonDemented" -> "Non Demented"
+    - "mild_demented" -> "Mild Demented"
+    """
+    name = raw_name.replace('_', ' ')
+    # Insert spaces before capital letters that follow lowercase letters
+    formatted = []
+    for ch in name:
+        if formatted and ch.isupper() and formatted[-1].islower():
+            formatted.append(' ')
+        formatted.append(ch)
+    return (''.join(formatted)).strip().title().replace('Non Demented', 'Non Demented')
+
+# Build classes mapping directly from the loaded model to ensure correct indices
+_model_names = getattr(model, 'names', None)
+if isinstance(_model_names, dict):
+    ALZHEIMER_CLASSES = {int(i): _format_class_name(n) for i, n in _model_names.items()}
+elif isinstance(_model_names, (list, tuple)):
+    ALZHEIMER_CLASSES = {int(i): _format_class_name(n) for i, n in enumerate(_model_names)}
+else:
+    # Fallback to a reasonable default if names are unavailable
+    ALZHEIMER_CLASSES = {
+        0: 'Very Mild Demented',
+        1: 'Non Demented',
+        2: 'Mild Demented',
+        3: 'Moderate Demented'
+    }
 
 def process_image(image_bytes):
     """Process uploaded image and make prediction"""
